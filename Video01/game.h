@@ -4,9 +4,9 @@
 #include "main.h"
 
 struct Game {
-        SDL_Event event;
         SDL_Window *window;
         SDL_Renderer *renderer;
+        SDL_Event event;
         bool is_running;
 };
 

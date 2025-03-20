@@ -1,23 +1,19 @@
 #include "game.h"
 #include "init_sdl.h"
 
-void game_events(struct Game *g);
-void game_update(struct Game *g);
-void game_draw(const struct Game *g);
-
 bool game_new(struct Game **game) {
     *game = calloc(1, sizeof(struct Game));
     if (*game == NULL) {
-        fprintf(stderr, "Error in calloc of new game.\n");
+        fprintf(stderr, "Error in Calloc of New Game.\n");
         return false;
     }
     struct Game *g = *game;
 
-    g->is_running = true;
-
     if (!game_init_sdl(g)) {
         return false;
     }
+
+    g->is_running = true;
 
     return true;
 }
@@ -30,7 +26,6 @@ void game_free(struct Game **game) {
             SDL_DestroyRenderer(g->renderer);
             g->renderer = NULL;
         }
-
         if (g->window) {
             SDL_DestroyWindow(g->window);
             g->window = NULL;
@@ -38,49 +33,21 @@ void game_free(struct Game **game) {
 
         SDL_Quit();
 
+        free(g);
         g = NULL;
-
-        free(*game);
         *game = NULL;
 
-        printf("all clean!\n");
+        printf("All clean!\n");
     }
-}
-
-void game_events(struct Game *g) {
-    while (SDL_PollEvent(&g->event)) {
-        switch (g->event.type) {
-        case SDL_EVENT_QUIT:
-            g->is_running = false;
-            break;
-        case SDL_EVENT_KEY_DOWN:
-            switch (g->event.key.scancode) {
-            case SDL_SCANCODE_ESCAPE:
-                g->is_running = false;
-                break;
-            default:
-                break;
-            }
-            break;
-        default:
-            break;
-        }
-    }
-}
-
-void game_draw(const struct Game *g) {
-    SDL_RenderClear(g->renderer);
-
-    SDL_RenderPresent(g->renderer);
 }
 
 void game_run(struct Game *g) {
-    while (g->is_running) {
+    SDL_SetRenderDrawColor(g->renderer, 128, 0, 92, 255);
+    SDL_RenderClear(g->renderer);
 
-        game_events(g);
+    // Draw
 
-        game_draw(g);
+    SDL_RenderPresent(g->renderer);
 
-        SDL_Delay(16);
-    }
+    SDL_Delay(5000);
 }
