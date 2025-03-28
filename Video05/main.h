@@ -14,4 +14,19 @@
 #define WINDOW_WIDTH 328
 #define WINDOW_HEIGHT 414
 
+#define PIECE_SIZE 16
+
+#define BORDER_HEIGHT 55
+#define BORDER_LEFT 4
+#define BORDER_RIGHT 8
+
+#define DIGIT_BACK_WIDTH 41
+#define DIGIT_BACK_HEIGHT 25
+#define DIGIT_BACK_TOP 15
+#define DIGIT_BACK_LEFT 15
+#define DIGIT_BACK_RIGHT 3
+
+#define DIGIT_WIDTH 13
+#define DIGIT_HEIGHT 23
+
 #endif

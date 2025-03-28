@@ -14,4 +14,10 @@
 #define WINDOW_WIDTH 328
 #define WINDOW_HEIGHT 414
 
+#define PIECE_SIZE 16
+
+#define BORDER_HEIGHT 55
+#define BORDER_LEFT 4
+#define BORDER_RIGHT 8
+
 #endif

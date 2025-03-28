@@ -11,11 +11,11 @@ bool game_new(struct Game **game) {
     }
     struct Game *g = *game;
 
+    g->is_running = true;
+
     if (!game_init_sdl(g)) {
         return false;
     }
-
-    g->is_running = true;
 
     return true;
 }

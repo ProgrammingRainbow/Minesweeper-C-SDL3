@@ -1,11 +1,21 @@
 #ifndef GAME_H
 #define GAME_H
 
+#include "board.h"
+#include "border.h"
+#include "clock.h"
 #include "main.h"
+#include "mines.h"
 
 struct Game {
         SDL_Window *window;
         SDL_Renderer *renderer;
+        struct Border *border;
+        struct Board *board;
+        struct Mines *mines;
+        struct Clock *clock;
+        unsigned rows;
+        unsigned columns;
         SDL_Event event;
         bool is_running;
 };

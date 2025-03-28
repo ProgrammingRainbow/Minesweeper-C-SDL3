@@ -2,6 +2,7 @@
 #include "init_sdl.h"
 
 void game_events(struct Game *g);
+void game_draw(struct Game *g);
 
 bool game_new(struct Game **game) {
     *game = calloc(1, sizeof(struct Game));
@@ -11,11 +12,26 @@ bool game_new(struct Game **game) {
     }
     struct Game *g = *game;
 
+    g->is_running = true;
+    g->rows = 9;
+    g->columns = 9;
+
     if (!game_init_sdl(g)) {
         return false;
     }
 
-    g->is_running = true;
+    if (!border_new(&g->border, g->renderer, g->rows, g->columns)) {
+        return false;
+    }
+    if (!board_new(&g->board, g->renderer, g->rows, g->columns)) {
+        return false;
+    }
+    if (!mines_new(&g->mines, g->renderer)) {
+        return false;
+    }
+    if (!clock_new(&g->clock, g->renderer, g->columns)) {
+        return false;
+    }
 
     return true;
 }
@@ -23,6 +39,19 @@ bool game_new(struct Game **game) {
 void game_free(struct Game **game) {
     if (*game) {
         struct Game *g = *game;
+
+        if (g->clock) {
+            clock_free(&g->clock);
+        }
+        if (g->mines) {
+            mines_free(&g->mines);
+        }
+        if (g->board) {
+            board_free(&g->board);
+        }
+        if (g->border) {
+            border_free(&g->border);
+        }
 
         if (g->renderer) {
             SDL_DestroyRenderer(g->renderer);
@@ -64,15 +93,22 @@ void game_events(struct Game *g) {
     }
 }
 
+void game_draw(struct Game *g) {
+    SDL_RenderClear(g->renderer);
+
+    border_draw(g->border);
+    board_draw(g->board);
+    mines_draw(g->mines);
+    clock_draw(g->clock);
+
+    SDL_RenderPresent(g->renderer);
+}
+
 void game_run(struct Game *g) {
     while (g->is_running) {
         game_events(g);
 
-        SDL_RenderClear(g->renderer);
-
-        // Draw
-
-        SDL_RenderPresent(g->renderer);
+        game_draw(g);
 
         SDL_Delay(16);
     }
