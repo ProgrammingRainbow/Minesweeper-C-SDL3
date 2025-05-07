@@ -10,7 +10,8 @@ struct Clock {
         SDL_FRect *back_src_rects;
         SDL_FRect *digit_src_rects;
         SDL_FRect back_dest_rect;
-        SDL_FRect digit_rect;
+        float digit_width;
+        float digit_height;
         unsigned columns;
 };
 

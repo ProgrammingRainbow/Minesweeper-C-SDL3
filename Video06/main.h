@@ -18,7 +18,6 @@
 
 #define BORDER_HEIGHT 55
 #define BORDER_LEFT 4
-#define BORDER_RIGHT 8
 
 #define DIGIT_BACK_WIDTH 41
 #define DIGIT_BACK_HEIGHT 25

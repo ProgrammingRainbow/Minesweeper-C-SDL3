@@ -4,8 +4,8 @@
 bool border_new(struct Border **border, SDL_Renderer *renderer, unsigned rows,
                 unsigned columns) {
     *border = calloc(1, sizeof(struct Border));
-    if (!*border) {
-        fprintf(stderr, "Error in calloc of new border.\n");
+    if (*border == NULL) {
+        fprintf(stderr, "Error in Calloc of New Border.\n");
         return false;
     }
     struct Border *b = *border;
@@ -46,7 +46,7 @@ void border_free(struct Border **border) {
         b = NULL;
         *border = NULL;
 
-        printf("border clean.\n");
+        printf("Free Border.\n");
     }
 }
 
@@ -56,7 +56,7 @@ void border_draw(const struct Border *b) {
     dest_rect.y = 0;
     SDL_RenderTexture(b->renderer, b->image, &b->src_rects[0], &dest_rect);
 
-    dest_rect.x = b->piece_width * ((float)b->columns + 1) - b->left_offset;
+    dest_rect.x = b->piece_width * (float)(b->columns + 1) - b->left_offset;
     dest_rect.y = 0;
     SDL_RenderTexture(b->renderer, b->image, &b->src_rects[2], &dest_rect);
 
@@ -64,27 +64,25 @@ void border_draw(const struct Border *b) {
     dest_rect.y = b->piece_width * (float)b->rows + b->piece_height;
     SDL_RenderTexture(b->renderer, b->image, &b->src_rects[5], &dest_rect);
 
-    dest_rect.x = b->piece_width * ((float)b->columns + 1) - b->left_offset;
+    dest_rect.x = b->piece_width * (float)(b->columns + 1) - b->left_offset;
     dest_rect.y = b->piece_width * (float)b->rows + b->piece_height;
     SDL_RenderTexture(b->renderer, b->image, &b->src_rects[7], &dest_rect);
 
-    for (int r = 0; r < (int)b->rows; r++) {
-        dest_rect.x = -b->left_offset;
-        dest_rect.y = (float)r * b->piece_width + b->piece_height;
-        SDL_RenderTexture(b->renderer, b->image, &b->src_rects[3], &dest_rect);
-
-        dest_rect.x = b->piece_width * ((float)b->columns + 1) - b->left_offset;
-        dest_rect.y = (float)r * b->piece_width + b->piece_height;
-        SDL_RenderTexture(b->renderer, b->image, &b->src_rects[4], &dest_rect);
-    }
-
-    for (int c = 0; c < (int)b->columns; c++) {
-        dest_rect.x = (float)(c + 1) * b->piece_width - b->left_offset;
+    for (unsigned column = 0; column < b->columns; column++) {
+        dest_rect.x = b->piece_width * (float)(column + 1) - b->left_offset;
         dest_rect.y = 0;
         SDL_RenderTexture(b->renderer, b->image, &b->src_rects[1], &dest_rect);
 
-        dest_rect.x = (float)(c + 1) * b->piece_width - b->left_offset;
         dest_rect.y = b->piece_width * (float)b->rows + b->piece_height;
         SDL_RenderTexture(b->renderer, b->image, &b->src_rects[6], &dest_rect);
+    }
+
+    for (unsigned row = 0; row < b->rows; row++) {
+        dest_rect.x = -b->left_offset;
+        dest_rect.y = b->piece_width * (float)row + b->piece_height;
+        SDL_RenderTexture(b->renderer, b->image, &b->src_rects[3], &dest_rect);
+
+        dest_rect.x = b->piece_width * (float)(b->columns + 1) - b->left_offset;
+        SDL_RenderTexture(b->renderer, b->image, &b->src_rects[4], &dest_rect);
     }
 }

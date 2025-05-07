@@ -15,10 +15,8 @@ bool mines_new(struct Mines **mines, SDL_Renderer *renderer) {
     m->back_dest_rect.y = DIGIT_BACK_TOP * 2;
     m->back_dest_rect.w = DIGIT_BACK_WIDTH * 2;
     m->back_dest_rect.h = DIGIT_BACK_HEIGHT * 2;
-    m->digit_rect.x = DIGIT_BACK_LEFT * 2 + 2;
-    m->digit_rect.y = DIGIT_BACK_TOP * 2 + 2;
-    m->digit_rect.w = DIGIT_WIDTH * 2;
-    m->digit_rect.h = DIGIT_HEIGHT * 2;
+    m->digit_width = DIGIT_WIDTH * 2;
+    m->digit_height = DIGIT_HEIGHT * 2;
 
     if (!load_media_sheet(m->renderer, &m->back_image, "images/digitback.png",
                           DIGIT_BACK_WIDTH, DIGIT_BACK_HEIGHT,
@@ -71,11 +69,11 @@ void mines_free(struct Mines **mines) {
 void mines_draw(const struct Mines *m) {
     SDL_RenderTexture(m->renderer, m->back_image, &m->back_src_rects[0],
                       &m->back_dest_rect);
-    SDL_FRect dest_rect = {m->digit_rect.x, m->digit_rect.y, m->digit_rect.w,
-                           m->digit_rect.h};
+    SDL_FRect digit_rect = {0, m->back_dest_rect.y + 2, m->digit_width,
+                            m->digit_height};
     for (int i = 0; i < 3; i++) {
-        dest_rect.x = m->digit_rect.x + m->digit_rect.w * (float)i;
+        digit_rect.x = m->back_dest_rect.x + 2 + digit_rect.w * (float)i;
         SDL_RenderTexture(m->renderer, m->digit_image, &m->digit_src_rects[0],
-                          &dest_rect);
+                          &digit_rect);
     }
 }

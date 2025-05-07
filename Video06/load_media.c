@@ -2,50 +2,44 @@
 
 bool load_media_sheet(SDL_Renderer *renderer, SDL_Texture **image,
                       const char *file_path, int width, int height,
-                      SDL_FRect **rects) {
-
-    SDL_Surface *source_surf = IMG_Load(file_path);
-    if (!source_surf) {
-        fprintf(stderr, "Error creating the source surface: %s\n",
-                SDL_GetError());
-        return false;
+                      SDL_FRect **src_rects) {
+    if (*image) {
+        SDL_DestroyTexture(*image);
+        *image = NULL;
+    }
+    if (*src_rects) {
+        free(*src_rects);
+        *src_rects = NULL;
     }
 
-    int max_rows = source_surf->h / height;
-    int max_columns = source_surf->w / width;
-    size_t rects_length = (size_t)(max_rows * max_columns);
-
-    *image = SDL_CreateTextureFromSurface(renderer, source_surf);
-    SDL_DestroySurface(source_surf);
+    *image = IMG_LoadTexture(renderer, file_path);
     if (!*image) {
-        fprintf(stderr, "Error creating a image texture: %s\n", SDL_GetError());
+        fprintf(stderr, "Error loading Texture: %s\n", SDL_GetError());
         return false;
     }
+
+    int rows = (*image)->h / height;
+    int columns = (*image)->w / width;
 
     if (!SDL_SetTextureScaleMode(*image, SDL_SCALEMODE_NEAREST)) {
-        fprintf(stderr, "Error setting texture scale mode: %s\n",
+        fprintf(stderr, "Error setting Texture scale mode: %s\n",
                 SDL_GetError());
         return false;
     }
 
-    if (*rects) {
-        free(*rects);
-        *rects = NULL;
-    }
-
-    *rects = calloc(rects_length, sizeof(SDL_Rect));
-    if (!*rects) {
-        fprintf(stderr, "Error in calloc of image array.\n");
+    *src_rects = calloc((size_t)(rows * columns), sizeof(SDL_FRect));
+    if (*src_rects == NULL) {
+        fprintf(stderr, "Error in Calloc of src_rects.\n");
         return false;
     }
 
-    for (int row = 0; row < max_rows; row++) {
-        for (int column = 0; column < max_columns; column++) {
-            int index = row * max_columns + column;
-            (*rects)[index].x = (float)(column * width);
-            (*rects)[index].y = (float)(row * height);
-            (*rects)[index].w = (float)width;
-            (*rects)[index].h = (float)height;
+    for (int row = 0; row < rows; row++) {
+        for (int column = 0; column < columns; column++) {
+            int index = row * columns + column;
+            (*src_rects)[index].x = (float)(column * width);
+            (*src_rects)[index].y = (float)(row * height);
+            (*src_rects)[index].w = (float)width;
+            (*src_rects)[index].h = (float)height;
         }
     }
 

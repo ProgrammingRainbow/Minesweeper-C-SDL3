@@ -2,7 +2,7 @@
 #include "init_sdl.h"
 
 void game_events(struct Game *g);
-void game_draw(struct Game *g);
+void game_draw(const struct Game *g);
 
 bool game_new(struct Game **game) {
     *game = calloc(1, sizeof(struct Game));
@@ -87,7 +87,7 @@ void game_events(struct Game *g) {
     }
 }
 
-void game_draw(struct Game *g) {
+void game_draw(const struct Game *g) {
     SDL_RenderClear(g->renderer);
 
     border_draw(g->border);

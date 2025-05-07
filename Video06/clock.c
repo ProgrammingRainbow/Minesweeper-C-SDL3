@@ -20,10 +20,8 @@ bool clock_new(struct Clock **clock, SDL_Renderer *renderer, unsigned columns) {
     c->back_dest_rect.y = DIGIT_BACK_TOP * 2;
     c->back_dest_rect.w = DIGIT_BACK_WIDTH * 2;
     c->back_dest_rect.h = DIGIT_BACK_HEIGHT * 2;
-    c->digit_rect.x = c->back_dest_rect.x + 2;
-    c->digit_rect.y = DIGIT_BACK_TOP * 2 + 2;
-    c->digit_rect.w = DIGIT_WIDTH * 2;
-    c->digit_rect.h = DIGIT_HEIGHT * 2;
+    c->digit_width = DIGIT_WIDTH * 2;
+    c->digit_height = DIGIT_HEIGHT * 2;
 
     if (!load_media_sheet(c->renderer, &c->back_image, "images/digitback.png",
                           DIGIT_BACK_WIDTH, DIGIT_BACK_HEIGHT,
@@ -76,11 +74,11 @@ void clock_free(struct Clock **clock) {
 void clock_draw(const struct Clock *c) {
     SDL_RenderTexture(c->renderer, c->back_image, &c->back_src_rects[0],
                       &c->back_dest_rect);
-    SDL_FRect dest_rect = {c->digit_rect.x, c->digit_rect.y, c->digit_rect.w,
-                           c->digit_rect.h};
+    SDL_FRect digit_rect = {0, c->back_dest_rect.y + 2, c->digit_width,
+                            c->digit_height};
     for (int i = 0; i < 3; i++) {
-        dest_rect.x = c->digit_rect.x + c->digit_rect.w * (float)i;
+        digit_rect.x = c->back_dest_rect.x + 2 + digit_rect.w * (float)i;
         SDL_RenderTexture(c->renderer, c->digit_image, &c->digit_src_rects[0],
-                          &dest_rect);
+                          &digit_rect);
     }
 }
