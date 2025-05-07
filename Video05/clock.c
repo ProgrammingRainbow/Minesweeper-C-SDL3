@@ -63,7 +63,7 @@ void clock_free(struct Clock **clock) {
         c = NULL;
         *clock = NULL;
 
-        printf("Free Clock.\n");
+        printf("Clock clean.\n");
     }
 }
 

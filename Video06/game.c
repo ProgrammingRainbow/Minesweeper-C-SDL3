@@ -32,6 +32,9 @@ bool game_new(struct Game **game) {
     if (!clock_new(&g->clock, g->renderer, g->columns)) {
         return false;
     }
+    if (!face_new(&g->face, g->renderer, g->columns)) {
+        return false;
+    }
 
     return true;
 }
@@ -40,6 +43,9 @@ void game_free(struct Game **game) {
     if (*game) {
         struct Game *g = *game;
 
+        if (g->face) {
+            face_free(&g->face);
+        }
         if (g->clock) {
             clock_free(&g->clock);
         }
@@ -100,6 +106,7 @@ void game_draw(const struct Game *g) {
     board_draw(g->board);
     mines_draw(g->mines);
     clock_draw(g->clock);
+    face_draw(g->face);
 
     SDL_RenderPresent(g->renderer);
 }

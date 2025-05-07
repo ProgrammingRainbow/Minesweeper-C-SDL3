@@ -3,6 +3,7 @@
 
 #include "board.h"
 #include "border.h"
+#include "clock.h"
 #include "main.h"
 #include "mines.h"
 
@@ -12,6 +13,7 @@ struct Game {
         struct Border *border;
         struct Board *board;
         struct Mines *mines;
+        struct Clock *clock;
         unsigned rows;
         unsigned columns;
         SDL_Event event;

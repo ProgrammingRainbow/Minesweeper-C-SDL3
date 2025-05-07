@@ -4,6 +4,7 @@
 #include "board.h"
 #include "border.h"
 #include "clock.h"
+#include "face.h"
 #include "main.h"
 #include "mines.h"
 
@@ -14,6 +15,7 @@ struct Game {
         struct Board *board;
         struct Mines *mines;
         struct Clock *clock;
+        struct Face *face;
         unsigned rows;
         unsigned columns;
         SDL_Event event;

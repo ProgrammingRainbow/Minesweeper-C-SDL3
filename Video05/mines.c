@@ -4,7 +4,7 @@
 bool mines_new(struct Mines **mines, SDL_Renderer *renderer) {
     *mines = calloc(1, sizeof(struct Mines));
     if (!*mines) {
-        fprintf(stderr, "Error in calloc of new clock.\n");
+        fprintf(stderr, "Error in calloc of new Mines.\n");
         return false;
     }
     struct Mines *m = *mines;
@@ -36,24 +36,22 @@ void mines_free(struct Mines **mines) {
     if (*mines) {
         struct Mines *m = *mines;
 
-        if (m->back_src_rects) {
-            free(m->back_src_rects);
-            m->back_src_rects = NULL;
-        }
-
-        if (m->back_image) {
-            SDL_DestroyTexture(m->back_image);
-            m->back_image = NULL;
-        }
-
         if (m->digit_src_rects) {
             free(m->digit_src_rects);
             m->digit_src_rects = NULL;
         }
-
         if (m->digit_image) {
             SDL_DestroyTexture(m->digit_image);
             m->digit_image = NULL;
+        }
+
+        if (m->back_src_rects) {
+            free(m->back_src_rects);
+            m->back_src_rects = NULL;
+        }
+        if (m->back_image) {
+            SDL_DestroyTexture(m->back_image);
+            m->back_image = NULL;
         }
 
         m->renderer = NULL;
@@ -62,7 +60,7 @@ void mines_free(struct Mines **mines) {
         m = NULL;
         *mines = NULL;
 
-        printf("mines clean.\n");
+        printf("Mines clean.\n");
     }
 }
 
