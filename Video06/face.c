@@ -4,7 +4,7 @@
 bool face_new(struct Face **face, SDL_Renderer *renderer, unsigned columns) {
     *face = calloc(1, sizeof(struct Face));
     if (!*face) {
-        fprintf(stderr, "Error in calloc of new face.\n");
+        fprintf(stderr, "Error in calloc of new Face.\n");
         return false;
     }
     struct Face *f = *face;
