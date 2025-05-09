@@ -16,6 +16,7 @@ struct Board {
         SDL_FRect rect;
         bool left_pressed;
         bool right_pressed;
+        struct Node *check_head;
 };
 
 struct Node {

@@ -3,6 +3,9 @@
 
 void board_free_arrays(struct Board *b);
 bool board_calloc_arrays(struct Board *b);
+bool board_uncover(struct Board *b);
+bool board_push_check(struct Board *b, int row, int column);
+struct Node board_pop_check(struct Board *b);
 
 bool board_new(struct Board **board, SDL_Renderer *renderer, unsigned rows,
                unsigned columns, int mine_count) {
@@ -152,7 +155,7 @@ bool board_reset(struct Board *b, int mine_count) {
             for (int r = row - 1; r < row + 2; r++) {
                 if (r >= 0 && r < (int)b->rows) {
                     for (int c = column - 1; c < column + 2; c++) {
-                        if (c >= 0 && (int)b->columns) {
+                        if (c >= 0 && c < (int)b->columns) {
                             if (b->back_array[r][c] == 13) {
                                 close_mines++;
                             }
@@ -167,6 +170,63 @@ bool board_reset(struct Board *b, int mine_count) {
     return true;
 }
 
+bool board_uncover(struct Board *b) {
+    while (b->check_head) {
+        struct Node pos = board_pop_check(b);
+
+        for (int r = pos.row - 1; r < pos.row + 2; r++) {
+            if (r < 0 || r >= (int)b->rows) {
+                continue;
+            }
+            for (int c = pos.column - 1; c < pos.column + 2; c++) {
+                if (c < 0 || c >= (int)b->columns) {
+                    continue;
+                }
+                if (b->front_array[r][c] == 9) {
+                    b->front_array[r][c] = b->back_array[r][c];
+                    if (b->front_array[r][c] == 0) {
+                        if (!board_push_check(b, r, c)) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return true;
+}
+
+bool board_push_check(struct Board *b, int row, int column) {
+    struct Node *node = calloc(1, sizeof(struct Node));
+    if (!node) {
+        fprintf(stderr, "Error in Calloc of Check Node.\n");
+        return false;
+    }
+
+    node->row = row;
+    node->column = column;
+
+    node->next = b->check_head;
+    b->check_head = node;
+
+    return true;
+}
+
+struct Node board_pop_check(struct Board *b) {
+    struct Node pos = {0};
+    if (b->check_head) {
+        pos.row = b->check_head->row;
+        pos.column = b->check_head->column;
+
+        struct Node *node = b->check_head;
+        b->check_head = b->check_head->next;
+        free(node);
+    }
+
+    return pos;
+}
+
 void board_mouse_down(struct Board *b, float x, float y, Uint8 button) {
     if (button == SDL_BUTTON_LEFT) {
         b->left_pressed = false;
@@ -178,7 +238,11 @@ void board_mouse_down(struct Board *b, float x, float y, Uint8 button) {
         if (y >= b->rect.y && y < b->rect.y + b->rect.h) {
             int row = (int)((y - b->rect.y) / b->piece_size);
             int column = (int)((x - b->rect.x) / b->piece_size);
-            if (button == SDL_BUTTON_RIGHT) {
+            if (button == SDL_BUTTON_LEFT) {
+                if (b->front_array[row][column] == 9) {
+                    b->left_pressed = true;
+                }
+            } else if (button == SDL_BUTTON_RIGHT) {
                 if (b->front_array[row][column] > 8 &&
                     b->front_array[row][column] < 12) {
                     b->right_pressed = true;
@@ -212,6 +276,24 @@ bool board_mouse_up(struct Board *b, float x, float y, Uint8 button) {
 
     int row = (int)((y - b->rect.y) / b->piece_size);
     int column = (int)((x - b->rect.x) / b->piece_size);
+
+    if (button == SDL_BUTTON_LEFT) {
+        if (b->front_array[row][column] == 9) {
+            if (b->back_array[row][column] == 13) {
+                b->front_array[row][column] = 14;
+            } else {
+                b->front_array[row][column] = b->back_array[row][column];
+                if (b->back_array[row][column] == 0) {
+                    if (!board_push_check(b, row, column)) {
+                        return false;
+                    }
+                    if (!board_uncover(b)) {
+                        return false;
+                    }
+                }
+            }
+        }
+    }
 
     if (button == SDL_BUTTON_RIGHT) {
         if (b->front_array[row][column] == 11) {
