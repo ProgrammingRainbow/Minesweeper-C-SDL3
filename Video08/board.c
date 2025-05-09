@@ -3,6 +3,9 @@
 
 void board_free_arrays(struct Board *b);
 bool board_calloc_arrays(struct Board *b);
+bool board_push_check(struct Board *b, int row, int column);
+struct Node board_pop_check(struct Board *b);
+bool board_uncover(struct Board *b);
 
 bool board_new(struct Board **board, SDL_Renderer *renderer, unsigned rows,
                unsigned columns, int mine_count) {
@@ -19,8 +22,10 @@ bool board_new(struct Board **board, SDL_Renderer *renderer, unsigned rows,
     b->mine_count = mine_count;
 
     b->piece_size = PIECE_SIZE * 2;
-    b->top_offset = BORDER_HEIGHT * 2;
-    b->left_offset = (PIECE_SIZE - BORDER_LEFT) * 2;
+    b->rect.x = (PIECE_SIZE - BORDER_LEFT) * 2;
+    b->rect.y = BORDER_HEIGHT * 2;
+    b->rect.w = (float)b->columns * b->piece_size + b->rect.x;
+    b->rect.h = (float)b->rows * b->piece_size + b->rect.y;
 
     if (!load_media_sheet(b->renderer, &b->image, "images/board.png",
                           PIECE_SIZE, PIECE_SIZE, &b->src_rects)) {
@@ -165,13 +170,150 @@ bool board_reset(struct Board *b, int mine_count) {
     return true;
 }
 
+bool board_push_check(struct Board *b, int row, int column) {
+    struct Node *node = calloc(1, sizeof(struct Node));
+    if (!node) {
+        fprintf(stderr, "Error in calloc of check Node.\n");
+        return false;
+    }
+
+    node->row = row;
+    node->column = column;
+
+    node->next = b->check_head;
+    b->check_head = node;
+
+    return true;
+}
+
+struct Node board_pop_check(struct Board *b) {
+    struct Node pos = {0};
+    if (b->check_head) {
+        pos.row = b->check_head->row;
+        pos.column = b->check_head->column;
+
+        struct Node *node = b->check_head;
+        b->check_head = b->check_head->next;
+        free(node);
+    }
+
+    return pos;
+}
+
+bool board_uncover(struct Board *b) {
+    while (b->check_head) {
+        struct Node pos = board_pop_check(b);
+
+        for (int r = pos.row - 1; r < pos.row + 2; r++) {
+            if (r < 0 || r >= (int)b->rows) {
+                continue;
+            }
+            for (int c = pos.column - 1; c < pos.column + 2; c++) {
+                if (c < 0 || c >= (int)b->columns) {
+                    continue;
+                }
+                if (b->front_array[r][c] == 9) {
+                    b->front_array[r][c] = b->back_array[r][c];
+                    if (b->front_array[r][c] == 0) {
+                        if (!board_push_check(b, r, c)) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return true;
+}
+
+void board_mouse_down(struct Board *b, float x, float y, Uint8 button) {
+    if (button == SDL_BUTTON_LEFT) {
+        b->left_pressed = false;
+    } else if (button == SDL_BUTTON_RIGHT) {
+        b->right_pressed = false;
+    }
+
+    if (x >= b->rect.x && x < b->rect.x + b->rect.w) {
+        if (y >= b->rect.y && y < b->rect.y + b->rect.h) {
+            int row = (int)((y - b->rect.y) / b->piece_size);
+            int column = (int)((x - b->rect.x) / b->piece_size);
+            if (button == SDL_BUTTON_LEFT) {
+                if (b->front_array[row][column] == 9) {
+                    b->left_pressed = true;
+                }
+            } else if (button == SDL_BUTTON_RIGHT) {
+                if (b->front_array[row][column] > 8 &&
+                    b->front_array[row][column] < 12) {
+                    b->right_pressed = true;
+                }
+            }
+        }
+    }
+}
+
+bool board_mouse_up(struct Board *b, float x, float y, Uint8 button) {
+    if (button == SDL_BUTTON_LEFT) {
+        if (!b->left_pressed) {
+            return true;
+        } else {
+            b->left_pressed = false;
+        }
+    } else if (button == SDL_BUTTON_RIGHT) {
+        if (!b->right_pressed) {
+            return true;
+        } else {
+            b->right_pressed = false;
+        }
+    }
+
+    if (x < b->rect.x || x >= b->rect.x + b->rect.w) {
+        return true;
+    }
+    if (y < b->rect.y || y >= b->rect.y + b->rect.h) {
+        return true;
+    }
+
+    int row = (int)((y - b->rect.y) / b->piece_size);
+    int column = (int)((x - b->rect.x) / b->piece_size);
+
+    if (button == SDL_BUTTON_LEFT) {
+        if (b->front_array[row][column] == 9) {
+            if (b->back_array[row][column] == 13) {
+                b->front_array[row][column] = 14;
+            } else {
+                b->front_array[row][column] = b->back_array[row][column];
+                if (b->front_array[row][column] == 0) {
+                    if (!board_push_check(b, row, column)) {
+                        return false;
+                    }
+                    if (!board_uncover(b)) {
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+    }
+
+    if (button == SDL_BUTTON_RIGHT) {
+        if (b->front_array[row][column] == 11) {
+            b->front_array[row][column] = 9;
+        } else {
+            b->front_array[row][column]++;
+        }
+    }
+
+    return true;
+}
+
 void board_draw(const struct Board *b) {
     SDL_FRect dest_rect = {0, 0, b->piece_size, b->piece_size};
     for (unsigned row = 0; row < b->rows; row++) {
-        dest_rect.y = (float)row * b->piece_size + b->top_offset;
+        dest_rect.y = (float)row * b->piece_size + b->rect.y;
         for (unsigned column = 0; column < b->columns; column++) {
-            dest_rect.x = (float)column * b->piece_size + b->left_offset;
-            unsigned index = b->back_array[row][column];
+            dest_rect.x = (float)column * b->piece_size + b->rect.x;
+            unsigned index = b->front_array[row][column];
             SDL_RenderTexture(b->renderer, b->image, &b->src_rects[index],
                               &dest_rect);
         }
