@@ -60,8 +60,6 @@ bool face_mouse_click(struct Face *f, float x, float y, bool down) {
                 return true;
             }
         }
-    } else if (!down) {
-        f->image_index = 0;
     }
 
     return false;
@@ -69,7 +67,7 @@ bool face_mouse_click(struct Face *f, float x, float y, bool down) {
 
 void face_default(struct Face *f) { f->image_index = 0; }
 
-void face_wont(struct Face *f) { f->image_index = 3; }
+void face_won(struct Face *f) { f->image_index = 3; }
 
 void face_lost(struct Face *f) { f->image_index = 4; }
 

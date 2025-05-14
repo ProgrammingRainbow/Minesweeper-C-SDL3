@@ -18,6 +18,7 @@ bool game_new(struct Game **game) {
     struct Game *g = *game;
 
     g->is_running = true;
+    g->is_playing = true;
     g->rows = 9;
     g->columns = 9;
     g->mine_count = 8;
@@ -88,9 +89,11 @@ void game_free(struct Game **game) {
 }
 
 bool game_reset(struct Game *g) {
-    if (!board_reset(g->board, g->mine_count)) {
+    if (!board_reset(g->board, g->mine_count, true)) {
         return false;
     }
+
+    g->is_playing = true;
 
     return true;
 }
@@ -100,9 +103,11 @@ void game_mouse_down(struct Game *g, float x, float y, Uint8 button) {
         face_mouse_click(g->face, x, y, true);
     }
 
-    board_mouse_down(g->board, x, y, button);
-    if (board_is_pressed(g->board)) {
-        face_question(g->face);
+    if (g->is_playing) {
+        board_mouse_down(g->board, x, y, button);
+        if (board_is_pressed(g->board)) {
+            face_question(g->face);
+        }
     }
 }
 
@@ -115,11 +120,21 @@ bool game_mouse_up(struct Game *g, float x, float y, Uint8 button) {
         }
     }
 
-    if (!board_mouse_up(g->board, x, y, button)) {
-        return false;
+    if (g->is_playing) {
+        if (!board_mouse_up(g->board, x, y, button)) {
+            return false;
+        }
     }
 
-    face_default(g->face);
+    if (board_game_state(g->board) == GAME_WON) {
+        face_won(g->face);
+        g->is_playing = false;
+    } else if (board_game_state(g->board) == GAME_LOST) {
+        face_lost(g->face);
+        g->is_playing = false;
+    } else {
+        face_default(g->face);
+    }
 
     return true;
 }
