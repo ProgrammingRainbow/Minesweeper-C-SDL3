@@ -1,19 +1,19 @@
 #include "board.h"
 #include "load_media.h"
 
-void board_free_arrays(struct Board *b);
 bool board_calloc_arrays(struct Board *b);
-bool board_uncover(struct Board *b);
+void board_free_arrays(struct Board *b);
 bool board_push_check(struct Board *b, int row, int column);
-struct Node board_pop_check(struct Board *b);
+struct Pos board_pop_check(struct Board *b);
+bool board_uncover(struct Board *b);
 void board_reveal(struct Board *b);
 void board_check_won(struct Board *b);
 
 bool board_new(struct Board **board, SDL_Renderer *renderer, unsigned rows,
-               unsigned columns, int mine_count) {
+               unsigned columns, float scale, int mine_count) {
     *board = calloc(1, sizeof(struct Board));
-    if (*board == NULL) {
-        fprintf(stderr, "Error in Calloc of New Board.\n");
+    if (!*board) {
+        fprintf(stderr, "Error in calloc of new board.\n");
         return false;
     }
     struct Board *b = *board;
@@ -21,48 +21,23 @@ bool board_new(struct Board **board, SDL_Renderer *renderer, unsigned rows,
     b->renderer = renderer;
     b->rows = rows;
     b->columns = columns;
+    b->scale = scale;
     b->mine_count = mine_count;
-
-    b->piece_size = PIECE_SIZE * 2;
-    b->rect.x = (PIECE_SIZE - BORDER_LEFT) * 2;
-    b->rect.y = BORDER_HEIGHT * 2;
-    b->rect.w = (float)b->columns * b->piece_size;
-    b->rect.h = (float)b->rows * b->piece_size;
+    b->game_status = 0;
+    b->first_turn = true;
 
     if (!load_media_sheet(b->renderer, &b->image, "images/board.png",
                           PIECE_SIZE, PIECE_SIZE, &b->src_rects)) {
         return false;
     }
 
+    board_set_scale(b, b->scale);
+
     if (!board_reset(b, b->mine_count, true)) {
         return false;
     }
 
     return true;
-}
-
-void board_free_arrays(struct Board *b) {
-    if (b->front_array) {
-        for (unsigned row = 0; row < b->rows; row++) {
-            if (b->front_array[row]) {
-                free(b->front_array[row]);
-                b->front_array[row] = NULL;
-            }
-        }
-        free(b->front_array);
-        b->front_array = NULL;
-    }
-
-    if (b->back_array) {
-        for (unsigned row = 0; row < b->rows; row++) {
-            if (b->back_array[row]) {
-                free(b->back_array[row]);
-                b->back_array[row] = NULL;
-            }
-        }
-        free(b->back_array);
-        b->back_array = NULL;
-    }
 }
 
 void board_free(struct Board **board) {
@@ -83,44 +58,67 @@ void board_free(struct Board **board) {
 
         b->renderer = NULL;
 
-        free(b);
         b = NULL;
+
+        free(*board);
         *board = NULL;
 
-        printf("Free Board.\n");
+        printf("board clean.\n");
     }
 }
 
 bool board_calloc_arrays(struct Board *b) {
     b->front_array = calloc(b->rows, sizeof(unsigned *));
-    if (b->front_array == NULL) {
-        fprintf(stderr, "Error in Calloc of front array of rows.\n");
+    if (!b->front_array) {
+        fprintf(stderr, "Error in calloc of front array rows!\n");
         return false;
     }
 
-    for (unsigned row = 0; row < b->rows; row++) {
-        b->front_array[row] = calloc(b->columns, sizeof(unsigned));
-        if (b->front_array[row] == NULL) {
-            fprintf(stderr, "Error in Calloc of front array of columns.\n");
+    for (unsigned r = 0; r < b->rows; r++) {
+        b->front_array[r] = calloc(b->columns, sizeof(unsigned));
+        if (!b->front_array[r]) {
+            fprintf(stderr, "Error in calloc of front array columns!\n");
             return false;
         }
     }
 
     b->back_array = calloc(b->rows, sizeof(unsigned *));
-    if (b->back_array == NULL) {
-        fprintf(stderr, "Error in Calloc of front array of rows.\n");
+    if (!b->back_array) {
+        fprintf(stderr, "Error in calloc of back array rows!\n");
         return false;
     }
 
-    for (unsigned row = 0; row < b->rows; row++) {
-        b->back_array[row] = calloc(b->columns, sizeof(unsigned));
-        if (b->back_array[row] == NULL) {
-            fprintf(stderr, "Error in Calloc of front array of columns.\n");
+    for (unsigned r = 0; r < b->rows; r++) {
+        b->back_array[r] = calloc(b->columns, sizeof(unsigned));
+        if (!b->back_array[r]) {
+            fprintf(stderr, "Error in calloc of back array columns!\n");
             return false;
         }
     }
 
     return true;
+}
+
+void board_free_arrays(struct Board *b) {
+    if (b->front_array) {
+        for (unsigned r = 0; r < b->rows; r++) {
+            if (b->front_array[r]) {
+                free(b->front_array[r]);
+            }
+        }
+        free(b->front_array);
+        b->front_array = NULL;
+    }
+
+    if (b->back_array) {
+        for (unsigned r = 0; r < b->rows; r++) {
+            if (b->back_array[r]) {
+                free(b->back_array[r]);
+            }
+        }
+        free(b->back_array);
+        b->back_array = NULL;
+    }
 }
 
 bool board_reset(struct Board *b, int mine_count, bool full_reset) {
@@ -133,19 +131,24 @@ bool board_reset(struct Board *b, int mine_count, bool full_reset) {
             return false;
         }
 
-        for (unsigned row = 0; row < b->rows; row++) {
-            for (unsigned column = 0; column < b->columns; column++) {
-                b->front_array[row][column] = 9;
+        for (unsigned r = 0; r < b->rows; r++) {
+            for (unsigned c = 0; c < b->columns; c++) {
+                b->front_array[r][c] = 9;
             }
         }
     } else {
-        for (unsigned row = 0; row < b->rows; row++) {
-            for (unsigned column = 0; column < b->columns; column++) {
-                b->back_array[row][column] = 0;
-                unsigned elem = b->front_array[row][column];
-                b->front_array[row][column] =
-                    (elem == 10 || elem == 11) ? elem : 9;
+        for (unsigned r = 0; r < b->rows; r++) {
+            for (unsigned c = 0; c < b->columns; c++) {
+                unsigned elem = b->front_array[r][c];
+                b->front_array[r][c] =
+                    ((elem == 10) || (elem == 11)) ? elem : 9;
             }
+        }
+    }
+
+    for (unsigned r = 0; r < b->rows; r++) {
+        for (unsigned c = 0; c < b->columns; c++) {
+            b->back_array[r][c] = 0;
         }
     }
 
@@ -180,21 +183,55 @@ bool board_reset(struct Board *b, int mine_count, bool full_reset) {
         }
     }
 
+    b->game_status = 0;
     b->first_turn = true;
-    b->game_state = GAME_PLAY;
+    b->mines_marked = 0;
 
     return true;
 }
 
-enum GameState board_game_state(const struct Board *b) { return b->game_state; }
+int board_game_status(const struct Board *b) { return b->game_status; }
 
-bool board_is_pressed(const struct Board *b) {
-    return b->left_pressed || b->right_pressed;
+int board_mines_marked(const struct Board *b) { return b->mines_marked; }
+
+bool board_is_pressed(const struct Board *b) { return b->pressed; }
+
+bool board_push_check(struct Board *b, int row, int column) {
+    struct Node *node = calloc(1, sizeof(struct Node));
+    if (!node) {
+        fprintf(stderr, "Error in calloc of check Node.\n");
+        return false;
+    }
+
+    node->row = row;
+    node->column = column;
+
+    node->next = b->check_head;
+    b->check_head = node;
+
+    return true;
+}
+
+struct Pos board_pop_check(struct Board *b) {
+    struct Pos pos;
+    if (b->check_head) {
+        pos.row = b->check_head->row;
+        pos.column = b->check_head->column;
+    } else {
+        pos.row = 0;
+        pos.column = 0;
+    }
+
+    struct Node *node = b->check_head;
+    b->check_head = b->check_head->next;
+    free(node);
+
+    return pos;
 }
 
 bool board_uncover(struct Board *b) {
     while (b->check_head) {
-        struct Node pos = board_pop_check(b);
+        struct Pos pos = board_pop_check(b);
 
         for (int r = pos.row - 1; r < pos.row + 2; r++) {
             if (r < 0 || r >= (int)b->rows) {
@@ -219,36 +256,6 @@ bool board_uncover(struct Board *b) {
     return true;
 }
 
-bool board_push_check(struct Board *b, int row, int column) {
-    struct Node *node = calloc(1, sizeof(struct Node));
-    if (!node) {
-        fprintf(stderr, "Error in Calloc of Check Node.\n");
-        return false;
-    }
-
-    node->row = row;
-    node->column = column;
-
-    node->next = b->check_head;
-    b->check_head = node;
-
-    return true;
-}
-
-struct Node board_pop_check(struct Board *b) {
-    struct Node pos = {0};
-    if (b->check_head) {
-        pos.row = b->check_head->row;
-        pos.column = b->check_head->column;
-
-        struct Node *node = b->check_head;
-        b->check_head = b->check_head->next;
-        free(node);
-    }
-
-    return pos;
-}
-
 void board_reveal(struct Board *b) {
     for (unsigned row = 0; row < b->rows; row++) {
         for (unsigned column = 0; column < b->columns; column++) {
@@ -268,60 +275,51 @@ void board_check_won(struct Board *b) {
     for (unsigned row = 0; row < b->rows; row++) {
         for (unsigned column = 0; column < b->columns; column++) {
             if (b->back_array[row][column] != 13) {
-                if (b->back_array[row][column] != b->front_array[row][column]) {
+                if (b->front_array[row][column] != b->back_array[row][column]) {
                     return;
                 }
             }
         }
     }
-
-    b->game_state = GAME_WON;
+    b->game_status = 1;
 }
 
 void board_mouse_down(struct Board *b, float x, float y, Uint8 button) {
-    if (button == SDL_BUTTON_LEFT) {
-        b->left_pressed = false;
-    } else if (button == SDL_BUTTON_RIGHT) {
-        b->right_pressed = false;
+    b->pressed = false;
+
+    if (x < b->rect.x || x > b->rect.x + b->rect.w) {
+        return;
+    }
+    if (y < b->rect.y || y > b->rect.y + b->rect.h) {
+        return;
     }
 
-    if (x >= b->rect.x && x < b->rect.x + b->rect.w) {
-        if (y >= b->rect.y && y < b->rect.y + b->rect.h) {
-            int row = (int)((y - b->rect.y) / b->piece_size);
-            int column = (int)((x - b->rect.x) / b->piece_size);
-            if (button == SDL_BUTTON_LEFT) {
-                if (b->front_array[row][column] == 9) {
-                    b->left_pressed = true;
-                }
-            } else if (button == SDL_BUTTON_RIGHT) {
-                if (b->front_array[row][column] > 8 &&
-                    b->front_array[row][column] < 12) {
-                    b->right_pressed = true;
-                }
-            }
+    int row = (int)((y - b->rect.y) / b->piece_size);
+    int column = (int)((x - b->rect.x) / b->piece_size);
+
+    if (button == SDL_BUTTON_LEFT) {
+        if (b->front_array[row][column] == 9) {
+            b->pressed = true;
+        }
+    } else if (button == SDL_BUTTON_RIGHT) {
+        if (b->front_array[row][column] > 8 &&
+            b->front_array[row][column] < 12) {
+            b->pressed = true;
         }
     }
 }
 
 bool board_mouse_up(struct Board *b, float x, float y, Uint8 button) {
-    if (button == SDL_BUTTON_LEFT) {
-        if (!b->left_pressed) {
-            return true;
-        } else {
-            b->left_pressed = false;
-        }
-    } else if (button == SDL_BUTTON_RIGHT) {
-        if (!b->right_pressed) {
-            return true;
-        } else {
-            b->right_pressed = false;
-        }
-    }
-
-    if (x < b->rect.x || x >= b->rect.x + b->rect.w) {
+    if (!b->pressed) {
         return true;
     }
-    if (y < b->rect.y || y >= b->rect.y + b->rect.h) {
+    b->pressed = false;
+    b->mines_marked = 0;
+
+    if (x < b->rect.x || x > b->rect.x + b->rect.w) {
+        return true;
+    }
+    if (y < b->rect.y || y > b->rect.y + b->rect.h) {
         return true;
     }
 
@@ -332,11 +330,11 @@ bool board_mouse_up(struct Board *b, float x, float y, Uint8 button) {
         if (b->front_array[row][column] == 9) {
             while (true) {
                 if (b->back_array[row][column] == 13) {
+                    b->game_status = -1;
                     b->front_array[row][column] = 14;
-                    b->game_state = GAME_LOST;
                 } else {
                     b->front_array[row][column] = b->back_array[row][column];
-                    if (b->back_array[row][column] == 0) {
+                    if (b->front_array[row][column] == 0) {
                         if (!board_push_check(b, row, column)) {
                             return false;
                         }
@@ -346,7 +344,7 @@ bool board_mouse_up(struct Board *b, float x, float y, Uint8 button) {
                     }
                     board_check_won(b);
                 }
-                if (b->first_turn && b->game_state != GAME_PLAY) {
+                if (b->first_turn && b->game_status != 0) {
                     if (!board_reset(b, b->mine_count, false)) {
                         return false;
                     }
@@ -356,33 +354,57 @@ bool board_mouse_up(struct Board *b, float x, float y, Uint8 button) {
             }
             b->first_turn = false;
 
-            if (b->game_state != GAME_PLAY) {
+            if (b->game_status != 0) {
                 board_reveal(b);
             }
+
+            return true;
         }
     }
 
     if (button == SDL_BUTTON_RIGHT) {
-        if (b->front_array[row][column] == 11) {
-            b->front_array[row][column] = 9;
-        } else if (b->front_array[row][column] > 8 &&
-                   b->front_array[row][column] < 12) {
+        if (b->front_array[row][column] == 9) {
             b->front_array[row][column]++;
+            b->mines_marked = -1;
+        } else if (b->front_array[row][column] == 10) {
+            b->front_array[row][column]++;
+            b->mines_marked = 1;
+        } else if (b->front_array[row][column] == 11) {
+            b->front_array[row][column] = 9;
         }
     }
 
     return true;
 }
 
+void board_set_scale(struct Board *b, float scale) {
+    b->scale = scale;
+    b->piece_size = PIECE_SIZE * b->scale;
+    b->rect.x = (PIECE_SIZE - BORDER_LEFT) * b->scale;
+    b->rect.y = BORDER_HEIGHT * b->scale;
+    b->rect.w = (float)b->columns * b->piece_size + b->rect.x;
+    b->rect.h = (float)b->rows * b->piece_size + b->rect.y;
+}
+
+void board_set_theme(struct Board *b, unsigned theme) { b->theme = theme * 16; }
+
+void board_set_size(struct Board *b, unsigned rows, unsigned columns) {
+    board_free_arrays(b);
+    b->rows = rows;
+    b->columns = columns;
+    b->rect.w = (float)b->columns * b->piece_size + b->rect.x;
+    b->rect.h = (float)b->rows * b->piece_size + b->rect.y;
+}
+
 void board_draw(const struct Board *b) {
     SDL_FRect dest_rect = {0, 0, b->piece_size, b->piece_size};
-    for (unsigned row = 0; row < b->rows; row++) {
-        dest_rect.y = (float)row * b->piece_size + b->rect.y;
-        for (unsigned column = 0; column < b->columns; column++) {
-            dest_rect.x = (float)column * b->piece_size + b->rect.x;
-            unsigned index = b->front_array[row][column];
-            SDL_RenderTexture(b->renderer, b->image, &b->src_rects[index],
-                              &dest_rect);
+    for (unsigned r = 0; r < b->rows; r++) {
+        dest_rect.y = (float)r * dest_rect.h + b->rect.y;
+        for (unsigned c = 0; c < b->columns; c++) {
+            dest_rect.x = (float)c * dest_rect.w + b->rect.x;
+            unsigned rect_index = b->front_array[r][c];
+            SDL_RenderTexture(b->renderer, b->image,
+                              &b->src_rects[rect_index + b->theme], &dest_rect);
         }
     }
 }

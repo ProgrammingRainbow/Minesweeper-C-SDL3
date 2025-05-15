@@ -3,25 +3,18 @@
 
 void clock_update_digits(struct Clock *c);
 
-bool clock_new(struct Clock **clock, SDL_Renderer *renderer, unsigned columns) {
+bool clock_new(struct Clock **clock, SDL_Renderer *renderer, unsigned columns,
+               float scale) {
     *clock = calloc(1, sizeof(struct Clock));
     if (!*clock) {
-        fprintf(stderr, "Error in calloc of new Clock.\n");
+        fprintf(stderr, "Error in calloc of new clock.\n");
         return false;
     }
     struct Clock *c = *clock;
 
     c->renderer = renderer;
     c->columns = columns;
-
-    c->back_dest_rect.x = (PIECE_SIZE * ((float)c->columns + 1) - BORDER_LEFT -
-                           DIGIT_BACK_WIDTH - DIGIT_BACK_RIGHT) *
-                          2;
-    c->back_dest_rect.y = DIGIT_BACK_TOP * 2;
-    c->back_dest_rect.w = DIGIT_BACK_WIDTH * 2;
-    c->back_dest_rect.h = DIGIT_BACK_HEIGHT * 2;
-    c->digit_width = DIGIT_WIDTH * 2;
-    c->digit_height = DIGIT_HEIGHT * 2;
+    c->scale = scale;
 
     if (!load_media_sheet(c->renderer, &c->back_image, "images/digitback.png",
                           DIGIT_BACK_WIDTH, DIGIT_BACK_HEIGHT,
@@ -34,6 +27,7 @@ bool clock_new(struct Clock **clock, SDL_Renderer *renderer, unsigned columns) {
         return false;
     }
 
+    clock_set_scale(c, c->scale);
     clock_update_digits(c);
 
     return true;
@@ -43,31 +37,32 @@ void clock_free(struct Clock **clock) {
     if (*clock) {
         struct Clock *c = *clock;
 
-        if (c->digit_src_rects) {
-            free(c->digit_src_rects);
-            c->digit_src_rects = NULL;
-        }
-        if (c->digit_image) {
-            SDL_DestroyTexture(c->digit_image);
-            c->digit_image = NULL;
-        }
-
         if (c->back_src_rects) {
             free(c->back_src_rects);
             c->back_src_rects = NULL;
         }
+
         if (c->back_image) {
             SDL_DestroyTexture(c->back_image);
             c->back_image = NULL;
         }
 
+        if (c->digit_src_rects) {
+            free(c->digit_src_rects);
+            c->digit_src_rects = NULL;
+        }
+
+        if (c->digit_image) {
+            SDL_DestroyTexture(c->digit_image);
+            c->digit_image = NULL;
+        }
+
         c->renderer = NULL;
 
-        free(c);
-        c = NULL;
+        free(*clock);
         *clock = NULL;
 
-        printf("Free Clock.\n");
+        printf("clock clean.\n");
     }
 }
 
@@ -100,6 +95,32 @@ void clock_reset(struct Clock *c) {
     clock_update_digits(c);
 }
 
+void clock_set_scale(struct Clock *c, float scale) {
+    c->scale = scale;
+    c->back_dest_rect.x = (PIECE_SIZE * ((float)c->columns + 1) - BORDER_LEFT -
+                           DIGIT_BACK_WIDTH - DIGIT_BACK_RIGHT) *
+                          c->scale;
+    c->back_dest_rect.y = DIGIT_BACK_TOP * c->scale;
+    c->back_dest_rect.w = DIGIT_BACK_WIDTH * c->scale;
+    c->back_dest_rect.h = DIGIT_BACK_HEIGHT * c->scale;
+    c->digit_rect.x = c->back_dest_rect.x + c->scale;
+    c->digit_rect.y = DIGIT_BACK_TOP * c->scale + c->scale;
+    c->digit_rect.w = DIGIT_WIDTH * c->scale;
+    c->digit_rect.h = DIGIT_HEIGHT * c->scale;
+}
+
+void clock_set_theme(struct Clock *c, unsigned theme) {
+    c->back_theme = theme;
+    c->digit_theme = theme * 12;
+}
+
+void clock_set_size(struct Clock *c, unsigned columns) {
+    c->columns = columns;
+    c->back_dest_rect.x = (PIECE_SIZE * ((float)c->columns + 1) - BORDER_LEFT -
+                           DIGIT_BACK_WIDTH - DIGIT_BACK_RIGHT) *
+                          c->scale;
+}
+
 void clock_update(struct Clock *c) {
     Uint64 current_time = SDL_GetTicks();
     Uint64 elapsed_time = 0;
@@ -118,13 +139,14 @@ void clock_update(struct Clock *c) {
 }
 
 void clock_draw(const struct Clock *c) {
-    SDL_RenderTexture(c->renderer, c->back_image, &c->back_src_rects[0],
-                      &c->back_dest_rect);
-    SDL_FRect digit_rect = {0, c->back_dest_rect.y + 2, c->digit_width,
-                            c->digit_height};
+    SDL_RenderTexture(c->renderer, c->back_image,
+                      &c->back_src_rects[c->back_theme], &c->back_dest_rect);
+    SDL_FRect dest_rect = {c->digit_rect.x, c->digit_rect.y, c->digit_rect.w,
+                           c->digit_rect.h};
     for (int i = 0; i < 3; i++) {
-        digit_rect.x = c->back_dest_rect.x + 2 + digit_rect.w * (float)i;
+        dest_rect.x = c->digit_rect.x + c->digit_rect.w * (float)i;
         SDL_RenderTexture(c->renderer, c->digit_image,
-                          &c->digit_src_rects[c->digits[i]], &digit_rect);
+                          &c->digit_src_rects[c->digits[i] + c->digit_theme],
+                          &dest_rect);
     }
 }
