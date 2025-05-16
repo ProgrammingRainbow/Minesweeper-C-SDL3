@@ -1,7 +1,4 @@
 #include "game.h"
-#include "board.h"
-#include "clock.h"
-#include "face.h"
 #include "init_sdl.h"
 
 bool game_reset(struct Game *g);
@@ -38,7 +35,7 @@ bool game_new(struct Game **game) {
                    g->mine_count)) {
         return false;
     }
-    if (!mines_new(&g->mines, g->renderer)) {
+    if (!mines_new(&g->mines, g->renderer, g->mine_count)) {
         return false;
     }
     if (!clock_new(&g->clock, g->renderer, g->columns)) {
@@ -97,6 +94,7 @@ bool game_reset(struct Game *g) {
 
     face_default(g->face);
     clock_reset(g->clock);
+    mines_reset(g->mines, g->mine_count);
     g->is_playing = true;
 
     return true;
@@ -127,6 +125,12 @@ bool game_mouse_up(struct Game *g, float x, float y, Uint8 button) {
     if (g->is_playing) {
         if (!board_mouse_up(g->board, x, y, button)) {
             return false;
+        }
+
+        if (board_mine_marked(g->board) == 1) {
+            mines_increment(g->mines);
+        } else if (board_mine_marked(g->board) == -1) {
+            mines_decrement(g->mines);
         }
     }
 
