@@ -14,11 +14,14 @@ struct Mines {
         float digit_height;
         unsigned digits[3];
         int mine_count;
+        float scale;
 };
 
-bool mines_new(struct Mines **mines, SDL_Renderer *renderer, int mine_count);
+bool mines_new(struct Mines **mines, SDL_Renderer *renderer, int mine_count,
+               float scale);
 void mines_free(struct Mines **mines);
 void mines_reset(struct Mines *m, int mine_count);
+void mines_set_scale(struct Mines *m, float scale);
 void mines_increment(struct Mines *m);
 void mines_decrement(struct Mines *m);
 void mines_draw(const struct Mines *m);
