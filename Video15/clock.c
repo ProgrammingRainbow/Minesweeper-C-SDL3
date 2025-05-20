@@ -93,6 +93,13 @@ void clock_set_scale(struct Clock *c, float scale) {
     c->digit_height = DIGIT_HEIGHT * c->scale;
 }
 
+void clock_set_size(struct Clock *c, unsigned columns) {
+    c->columns = columns;
+    c->back_dest_rect.x = (PIECE_SIZE * ((float)c->columns + 1) - BORDER_LEFT -
+                           DIGIT_BACK_WIDTH - DIGIT_BACK_RIGHT) *
+                          c->scale;
+}
+
 void clock_update(struct Clock *c) {
     Uint64 current_time = SDL_GetTicks();
     Uint64 elapsed_time = 0;

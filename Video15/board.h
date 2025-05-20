@@ -36,6 +36,7 @@ bool board_new(struct Board **board, SDL_Renderer *renderer, unsigned rows,
 void board_free(struct Board **board);
 bool board_reset(struct Board *b, int mine_count, bool full_reset);
 void board_set_scale(struct Board *b, float scale);
+void board_set_size(struct Board *b, unsigned rows, unsigned columns);
 enum GameState board_game_state(const struct Board *b);
 int board_mine_marked(const struct Board *b);
 bool board_is_pressed(const struct Board *b);

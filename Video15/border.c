@@ -56,6 +56,11 @@ void border_set_scale(struct Border *b, float scale) {
     b->piece_height = BORDER_HEIGHT * b->scale;
 }
 
+void border_set_size(struct Border *b, unsigned rows, unsigned columns) {
+    b->rows = rows;
+    b->columns = columns;
+}
+
 void border_draw(const struct Border *b) {
     SDL_FRect dest_rect = {0, 0, b->piece_width, b->piece_height};
     dest_rect.x = -b->left_offset;
