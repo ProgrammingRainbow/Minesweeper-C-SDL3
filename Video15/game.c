@@ -1,4 +1,5 @@
 #include "game.h"
+#include "border.h"
 #include "init_sdl.h"
 
 bool game_reset(struct Game *g);
@@ -221,24 +222,29 @@ bool game_events(struct Game *g) {
                 game_toggle_scale(g);
                 break;
             case SDL_SCANCODE_Q:
-                if (!game_set_size(g, 9, 9, 2))
+                if (!game_set_size(g, 9, 9, 2)) {
                     return false;
+                }
                 break;
             case SDL_SCANCODE_W:
-                if (!game_set_size(g, 16, 16, 2))
+                if (!game_set_size(g, 16, 16, 2)) {
                     return false;
+                }
                 break;
             case SDL_SCANCODE_E:
-                if (!game_set_size(g, 16, 30, 2))
+                if (!game_set_size(g, 16, 30, 2)) {
                     return false;
+                }
                 break;
             case SDL_SCANCODE_R:
-                if (!game_set_size(g, 20, 40, 2))
+                if (!game_set_size(g, 20, 40, 2)) {
                     return false;
+                }
                 break;
             case SDL_SCANCODE_T:
-                if (!game_set_size(g, 40, 80, 1))
+                if (!game_set_size(g, 40, 80, 1)) {
                     return false;
+                }
                 break;
             default:
                 break;
