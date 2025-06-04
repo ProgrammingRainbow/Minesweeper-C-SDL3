@@ -2,7 +2,7 @@
 #include "init_sdl.h"
 
 bool game_create_string(char **game_str, const char *new_str);
-void game_set_title(struct Game *g);
+bool game_set_title(struct Game *g);
 bool game_reset(struct Game *g);
 void game_set_scale(struct Game *g);
 void game_toggle_scale(struct Game *g);
@@ -58,12 +58,12 @@ bool game_new(struct Game **game) {
     if (!game_create_string(&g->diff_str, "Easy")) {
         return false;
     }
-
     if (!game_create_string(&g->size_str, "Tiny")) {
         return false;
     }
-
-    game_set_title(g);
+    if (!game_set_title(g)) {
+        return false;
+    }
 
     return true;
 }
@@ -116,7 +116,7 @@ bool game_create_string(char **game_str, const char *new_str) {
     size_t length = (size_t)(snprintf(NULL, 0, "%s", new_str) + 1);
 
     *game_str = calloc(1, sizeof(char) * length);
-    if (!*game_str) {
+    if (*game_str == NULL) {
         fprintf(stderr, "Error in calloc of difficulty/size string.\n");
         return false;
     }
@@ -126,7 +126,7 @@ bool game_create_string(char **game_str, const char *new_str) {
     return true;
 }
 
-void game_set_title(struct Game *g) {
+bool game_set_title(struct Game *g) {
     int length = snprintf(NULL, 0, "%s - %s - %s", WINDOW_TITLE, g->size_str,
                           g->diff_str) +
                  1;
@@ -135,7 +135,12 @@ void game_set_title(struct Game *g) {
     snprintf(title_str, (size_t)length, "%s - %s - %s", WINDOW_TITLE,
              g->size_str, g->diff_str);
 
-    SDL_SetWindowTitle(g->window, title_str);
+    if (!SDL_SetWindowTitle(g->window, title_str)) {
+        fprintf(stderr, "Error setting Window Title.\n");
+        return false;
+    }
+
+    return true;
 }
 
 bool game_reset(struct Game *g) {
@@ -145,12 +150,14 @@ bool game_reset(struct Game *g) {
         return false;
     }
 
+    if (!game_set_title(g)) {
+        return false;
+    }
+
     face_default(g->face);
     clock_reset(g->clock);
     mines_reset(g->mines, g->mine_count);
     g->is_playing = true;
-
-    game_set_title(g);
 
     return true;
 }

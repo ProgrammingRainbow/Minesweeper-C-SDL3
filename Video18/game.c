@@ -2,15 +2,15 @@
 #include "init_sdl.h"
 
 bool game_create_string(char **game_str, const char *new_str);
-void game_set_title(struct Game *g);
+bool game_set_title(struct Game *g);
 bool game_reset(struct Game *g);
 void game_set_scale(struct Game *g);
-void game_toggel_scale(struct Game *g);
+void game_toggle_scale(struct Game *g);
 void game_set_theme(struct Game *g, unsigned theme);
-bool game_set_difficulty(struct Game *g, double difficulty,
-                         const char *diff_str);
 bool game_set_size(struct Game *g, unsigned rows, unsigned columns, float scale,
                    const char *size_str);
+bool game_set_difficulty(struct Game *g, float difficulty,
+                         const char *diff_str);
 void game_mouse_down(struct Game *g, float x, float y, Uint8 button);
 bool game_mouse_up(struct Game *g, float x, float y, Uint8 button);
 bool game_events(struct Game *g);
@@ -20,7 +20,7 @@ void game_draw(const struct Game *g);
 bool game_new(struct Game **game) {
     *game = calloc(1, sizeof(struct Game));
     if (*game == NULL) {
-        fprintf(stderr, "Error in calloc of new game.\n");
+        fprintf(stderr, "Error in Calloc of New Game.\n");
         return false;
     }
     struct Game *g = *game;
@@ -29,31 +29,29 @@ bool game_new(struct Game **game) {
     g->is_playing = true;
     g->rows = 9;
     g->columns = 9;
-    g->scale = 2;
     g->mine_count = 8;
-    g->difficulty = 0.1;
+    g->scale = 2;
+    g->difficulty = 0.1f;
 
     if (!game_init_sdl(g)) {
         return false;
     }
 
+    srand((unsigned)time(NULL));
+
     if (!border_new(&g->border, g->renderer, g->rows, g->columns, g->scale)) {
         return false;
     }
-
-    if (!board_new(&g->board, g->renderer, g->rows, g->columns, g->scale,
-                   g->mine_count)) {
+    if (!board_new(&g->board, g->renderer, g->rows, g->columns, g->mine_count,
+                   g->scale)) {
         return false;
     }
-
-    if (!mines_new(&g->mines, g->renderer, g->scale, g->mine_count)) {
+    if (!mines_new(&g->mines, g->renderer, g->mine_count, g->scale)) {
         return false;
     }
-
     if (!clock_new(&g->clock, g->renderer, g->columns, g->scale)) {
         return false;
     }
-
     if (!face_new(&g->face, g->renderer, g->columns, g->scale)) {
         return false;
     }
@@ -61,12 +59,12 @@ bool game_new(struct Game **game) {
     if (!game_create_string(&g->diff_str, "Easy")) {
         return false;
     }
-
     if (!game_create_string(&g->size_str, "Tiny")) {
         return false;
     }
-
-    game_set_title(g);
+    if (!game_set_title(g)) {
+        return false;
+    }
 
     return true;
 }
@@ -75,27 +73,26 @@ void game_free(struct Game **game) {
     if (*game) {
         struct Game *g = *game;
 
-        border_free(&g->border);
-        board_free(&g->board);
-        mines_free(&g->mines);
-        clock_free(&g->clock);
-        face_free(&g->face);
-
-        if (g->diff_str) {
-            free(g->diff_str);
-            g->diff_str = NULL;
+        if (g->face) {
+            face_free(&g->face);
         }
-
-        if (g->size_str) {
-            free(g->size_str);
-            g->size_str = NULL;
+        if (g->clock) {
+            clock_free(&g->clock);
+        }
+        if (g->mines) {
+            mines_free(&g->mines);
+        }
+        if (g->board) {
+            board_free(&g->board);
+        }
+        if (g->border) {
+            border_free(&g->border);
         }
 
         if (g->renderer) {
             SDL_DestroyRenderer(g->renderer);
             g->renderer = NULL;
         }
-
         if (g->window) {
             SDL_DestroyWindow(g->window);
             g->window = NULL;
@@ -103,12 +100,11 @@ void game_free(struct Game **game) {
 
         SDL_Quit();
 
+        free(g);
         g = NULL;
-
-        free(*game);
         *game = NULL;
 
-        printf("all clean!\n");
+        printf("All clean!\n");
     }
 }
 
@@ -121,7 +117,7 @@ bool game_create_string(char **game_str, const char *new_str) {
     size_t length = (size_t)(snprintf(NULL, 0, "%s", new_str) + 1);
 
     *game_str = calloc(1, sizeof(char) * length);
-    if (!*game_str) {
+    if (*game_str == NULL) {
         fprintf(stderr, "Error in calloc of difficulty/size string.\n");
         return false;
     }
@@ -131,7 +127,7 @@ bool game_create_string(char **game_str, const char *new_str) {
     return true;
 }
 
-void game_set_title(struct Game *g) {
+bool game_set_title(struct Game *g) {
     int length = snprintf(NULL, 0, "%s - %s - %s", WINDOW_TITLE, g->size_str,
                           g->diff_str) +
                  1;
@@ -140,22 +136,28 @@ void game_set_title(struct Game *g) {
     snprintf(title_str, (size_t)length, "%s - %s - %s", WINDOW_TITLE,
              g->size_str, g->diff_str);
 
-    SDL_SetWindowTitle(g->window, title_str);
+    if (!SDL_SetWindowTitle(g->window, title_str)) {
+        fprintf(stderr, "Error setting Window Title.\n");
+        return false;
+    }
+
+    return true;
 }
 
 bool game_reset(struct Game *g) {
-    g->mine_count = (int)((double)(g->rows * g->columns) * g->difficulty);
+    g->mine_count = (int)((float)(g->rows * g->columns) * g->difficulty + 0.5f);
 
     if (!board_reset(g->board, g->mine_count, true)) {
         return false;
     }
 
-    mines_reset(g->mines, g->mine_count);
-    clock_reset(g->clock);
+    if (!game_set_title(g)) {
+        return false;
+    }
+
     face_default(g->face);
-
-    game_set_title(g);
-
+    clock_reset(g->clock);
+    mines_reset(g->mines, g->mine_count);
     g->is_playing = true;
 
     return true;
@@ -172,14 +174,15 @@ void game_set_scale(struct Game *g) {
                               BORDER_LEFT + BORDER_RIGHT) *
                              g->scale);
     int window_height =
-        (int)((PIECE_SIZE * ((float)g->rows) + BORDER_HEIGHT + BORDER_BOTTOM) *
+        (int)((PIECE_SIZE * (float)g->rows + BORDER_HEIGHT + BORDER_BOTTOM) *
               g->scale);
+
     SDL_SetWindowSize(g->window, window_width, window_height);
     SDL_SetWindowPosition(g->window, SDL_WINDOWPOS_CENTERED,
                           SDL_WINDOWPOS_CENTERED);
 }
 
-void game_toggel_scale(struct Game *g) {
+void game_toggle_scale(struct Game *g) {
     g->scale = (g->scale < 3) ? g->scale + 1 : 1;
     game_set_scale(g);
 }
@@ -218,7 +221,7 @@ bool game_set_size(struct Game *g, unsigned rows, unsigned columns, float scale,
     return true;
 }
 
-bool game_set_difficulty(struct Game *g, double difficulty,
+bool game_set_difficulty(struct Game *g, float difficulty,
                          const char *diff_str) {
     g->difficulty = difficulty;
 
@@ -260,21 +263,21 @@ bool game_mouse_up(struct Game *g, float x, float y, Uint8 button) {
             return false;
         }
 
-        if (board_mines_marked(g->board) == 1) {
+        if (board_mine_marked(g->board) == 1) {
             mines_increment(g->mines);
-        } else if (board_mines_marked(g->board) == -1) {
+        } else if (board_mine_marked(g->board) == -1) {
             mines_decrement(g->mines);
         }
+    }
 
-        if (board_game_status(g->board) == 1) {
-            face_won(g->face);
-            g->is_playing = false;
-        } else if (board_game_status(g->board) == -1) {
-            face_lost(g->face);
-            g->is_playing = false;
-        } else {
-            face_default(g->face);
-        }
+    if (board_game_state(g->board) == GAME_WON) {
+        face_won(g->face);
+        g->is_playing = false;
+    } else if (board_game_state(g->board) == GAME_LOST) {
+        face_lost(g->face);
+        g->is_playing = false;
+    } else {
+        face_default(g->face);
     }
 
     return true;
@@ -302,12 +305,7 @@ bool game_events(struct Game *g) {
                 g->is_running = false;
                 break;
             case SDL_SCANCODE_B:
-                game_toggel_scale(g);
-                break;
-            case SDL_SCANCODE_N:
-                if (!game_reset(g)) {
-                    return false;
-                }
+                game_toggle_scale(g);
                 break;
             case SDL_SCANCODE_1:
                 game_set_theme(g, 0);
@@ -334,40 +332,49 @@ bool game_events(struct Game *g) {
                 game_set_theme(g, 7);
                 break;
             case SDL_SCANCODE_A:
-                if (!game_set_difficulty(g, 0.1, "Easy"))
+                if (!game_set_difficulty(g, 0.1f, "Easy")) {
                     return false;
+                }
                 break;
             case SDL_SCANCODE_S:
-                if (!game_set_difficulty(g, 0.133, "Medium"))
+                if (!game_set_difficulty(g, 0.133f, "Medium")) {
                     return false;
+                }
                 break;
             case SDL_SCANCODE_D:
-                if (!game_set_difficulty(g, 0.166, "Hard"))
+                if (!game_set_difficulty(g, 0.166f, "Hard")) {
                     return false;
+                }
                 break;
             case SDL_SCANCODE_F:
-                if (!game_set_difficulty(g, 0.2, "Very Hard"))
+                if (!game_set_difficulty(g, 0.2f, "Very Hard")) {
                     return false;
+                }
                 break;
             case SDL_SCANCODE_Q:
-                if (!game_set_size(g, 9, 9, 2, "Tiny"))
+                if (!game_set_size(g, 9, 9, 2, "Tiny")) {
                     return false;
+                }
                 break;
             case SDL_SCANCODE_W:
-                if (!game_set_size(g, 16, 16, 2, "Small"))
+                if (!game_set_size(g, 16, 16, 2, "Small")) {
                     return false;
+                }
                 break;
             case SDL_SCANCODE_E:
-                if (!game_set_size(g, 16, 30, 2, "Medium"))
+                if (!game_set_size(g, 16, 30, 2, "Medium")) {
                     return false;
+                }
                 break;
             case SDL_SCANCODE_R:
-                if (!game_set_size(g, 20, 40, 2, "Large"))
+                if (!game_set_size(g, 20, 40, 2, "Large")) {
                     return false;
+                }
                 break;
             case SDL_SCANCODE_T:
-                if (!game_set_size(g, 40, 80, 1, "Huge"))
+                if (!game_set_size(g, 40, 80, 1, "Huge")) {
                     return false;
+                }
                 break;
             default:
                 break;
@@ -401,14 +408,13 @@ void game_draw(const struct Game *g) {
 
 bool game_run(struct Game *g) {
     while (g->is_running) {
-
         if (!game_events(g)) {
             return false;
         }
 
-        game_draw(g);
-
         game_update(g);
+
+        game_draw(g);
 
         SDL_Delay(16);
     }

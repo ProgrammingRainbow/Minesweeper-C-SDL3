@@ -9,7 +9,6 @@
 #include "mines.h"
 
 struct Game {
-        SDL_Event event;
         SDL_Window *window;
         SDL_Renderer *renderer;
         struct Border *border;
@@ -17,13 +16,14 @@ struct Game {
         struct Mines *mines;
         struct Clock *clock;
         struct Face *face;
-        bool is_running;
-        bool is_playing;
         unsigned rows;
         unsigned columns;
-        float scale;
+        SDL_Event event;
+        bool is_running;
+        bool is_playing;
         int mine_count;
-        double difficulty;
+        float scale;
+        float difficulty;
         char *size_str;
         char *diff_str;
 };

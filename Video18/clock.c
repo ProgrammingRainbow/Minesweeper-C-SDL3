@@ -7,7 +7,7 @@ bool clock_new(struct Clock **clock, SDL_Renderer *renderer, unsigned columns,
                float scale) {
     *clock = calloc(1, sizeof(struct Clock));
     if (!*clock) {
-        fprintf(stderr, "Error in calloc of new clock.\n");
+        fprintf(stderr, "Error in calloc of new Clock.\n");
         return false;
     }
     struct Clock *c = *clock;
@@ -27,8 +27,8 @@ bool clock_new(struct Clock **clock, SDL_Renderer *renderer, unsigned columns,
         return false;
     }
 
+    clock_reset(c);
     clock_set_scale(c, c->scale);
-    clock_update_digits(c);
 
     return true;
 }
@@ -37,54 +37,40 @@ void clock_free(struct Clock **clock) {
     if (*clock) {
         struct Clock *c = *clock;
 
-        if (c->back_src_rects) {
-            free(c->back_src_rects);
-            c->back_src_rects = NULL;
-        }
-
-        if (c->back_image) {
-            SDL_DestroyTexture(c->back_image);
-            c->back_image = NULL;
-        }
-
         if (c->digit_src_rects) {
             free(c->digit_src_rects);
             c->digit_src_rects = NULL;
         }
-
         if (c->digit_image) {
             SDL_DestroyTexture(c->digit_image);
             c->digit_image = NULL;
         }
 
+        if (c->back_src_rects) {
+            free(c->back_src_rects);
+            c->back_src_rects = NULL;
+        }
+        if (c->back_image) {
+            SDL_DestroyTexture(c->back_image);
+            c->back_image = NULL;
+        }
+
         c->renderer = NULL;
 
-        free(*clock);
+        free(c);
+        c = NULL;
         *clock = NULL;
 
-        printf("clock clean.\n");
+        printf("Free Clock.\n");
     }
 }
 
 void clock_update_digits(struct Clock *c) {
-    unsigned default_digit = 11;
-    unsigned seconds = c->seconds;
+    unsigned seconds = (c->seconds > 999) ? 999 : c->seconds;
 
-    if (c->seconds > 999) {
-        seconds = 999;
-    }
+    c->digits[0] = (seconds > 99) ? (seconds / 100) : 11;
 
-    if (seconds > 99) {
-        c->digits[0] = (unsigned)(seconds / 100.0);
-    } else {
-        c->digits[0] = default_digit;
-    }
-
-    if (seconds > 9) {
-        c->digits[1] = (unsigned)(seconds / 10.0) % 10;
-    } else {
-        c->digits[1] = default_digit;
-    }
+    c->digits[1] = (seconds > 9) ? (seconds / 10) % 10 : 11;
 
     c->digits[2] = seconds % 10;
 }
@@ -103,15 +89,8 @@ void clock_set_scale(struct Clock *c, float scale) {
     c->back_dest_rect.y = DIGIT_BACK_TOP * c->scale;
     c->back_dest_rect.w = DIGIT_BACK_WIDTH * c->scale;
     c->back_dest_rect.h = DIGIT_BACK_HEIGHT * c->scale;
-    c->digit_rect.x = c->back_dest_rect.x + c->scale;
-    c->digit_rect.y = DIGIT_BACK_TOP * c->scale + c->scale;
-    c->digit_rect.w = DIGIT_WIDTH * c->scale;
-    c->digit_rect.h = DIGIT_HEIGHT * c->scale;
-}
-
-void clock_set_theme(struct Clock *c, unsigned theme) {
-    c->back_theme = theme;
-    c->digit_theme = theme * 12;
+    c->digit_width = DIGIT_WIDTH * c->scale;
+    c->digit_height = DIGIT_HEIGHT * c->scale;
 }
 
 void clock_set_size(struct Clock *c, unsigned columns) {
@@ -119,6 +98,11 @@ void clock_set_size(struct Clock *c, unsigned columns) {
     c->back_dest_rect.x = (PIECE_SIZE * ((float)c->columns + 1) - BORDER_LEFT -
                            DIGIT_BACK_WIDTH - DIGIT_BACK_RIGHT) *
                           c->scale;
+}
+
+void clock_set_theme(struct Clock *c, unsigned theme) {
+    c->back_theme = theme;
+    c->digit_theme = theme * 12;
 }
 
 void clock_update(struct Clock *c) {
@@ -131,9 +115,9 @@ void clock_update(struct Clock *c) {
         elapsed_time = (Uint64)-1 - c->last_time + current_time;
     }
 
-    if (elapsed_time > 1000) {
-        c->last_time += 1000;
+    if (elapsed_time >= 1000) {
         c->seconds++;
+        c->last_time += 1000;
         clock_update_digits(c);
     }
 }
@@ -141,12 +125,12 @@ void clock_update(struct Clock *c) {
 void clock_draw(const struct Clock *c) {
     SDL_RenderTexture(c->renderer, c->back_image,
                       &c->back_src_rects[c->back_theme], &c->back_dest_rect);
-    SDL_FRect dest_rect = {c->digit_rect.x, c->digit_rect.y, c->digit_rect.w,
-                           c->digit_rect.h};
+    SDL_FRect digit_rect = {0, c->back_dest_rect.y + 2, c->digit_width,
+                            c->digit_height};
     for (int i = 0; i < 3; i++) {
-        dest_rect.x = c->digit_rect.x + c->digit_rect.w * (float)i;
+        digit_rect.x = c->back_dest_rect.x + 2 + digit_rect.w * (float)i;
         SDL_RenderTexture(c->renderer, c->digit_image,
                           &c->digit_src_rects[c->digits[i] + c->digit_theme],
-                          &dest_rect);
+                          &digit_rect);
     }
 }
