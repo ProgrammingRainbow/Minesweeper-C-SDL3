@@ -6,11 +6,11 @@ bool game_set_title(struct Game *g);
 bool game_reset(struct Game *g);
 void game_set_scale(struct Game *g);
 void game_toggle_scale(struct Game *g);
-void game_set_theme(struct Game *g, unsigned theme);
 bool game_set_size(struct Game *g, unsigned rows, unsigned columns, float scale,
                    const char *size_str);
 bool game_set_difficulty(struct Game *g, float difficulty,
                          const char *diff_str);
+void game_set_theme(struct Game *g, unsigned theme);
 void game_mouse_down(struct Game *g, float x, float y, Uint8 button);
 bool game_mouse_up(struct Game *g, float x, float y, Uint8 button);
 bool game_events(struct Game *g);
@@ -187,16 +187,6 @@ void game_toggle_scale(struct Game *g) {
     game_set_scale(g);
 }
 
-void game_set_theme(struct Game *g, unsigned theme) {
-    unsigned binary_theme = (theme < 6) ? 0 : 1;
-    unsigned face_theme = (theme < 3) ? 0 : (theme < 6) ? 1 : 2;
-    board_set_theme(g->board, theme);
-    border_set_theme(g->border, binary_theme);
-    mines_set_theme(g->mines, binary_theme);
-    clock_set_theme(g->clock, binary_theme);
-    face_set_theme(g->face, face_theme);
-}
-
 bool game_set_size(struct Game *g, unsigned rows, unsigned columns, float scale,
                    const char *size_str) {
     g->rows = rows;
@@ -234,6 +224,17 @@ bool game_set_difficulty(struct Game *g, float difficulty,
     }
 
     return true;
+}
+
+void game_set_theme(struct Game *g, unsigned theme) {
+    unsigned binary_theme = (theme < 6) ? 0 : 1;
+    unsigned face_theme = (theme < 3) ? 0 : (theme < 6) ? 1 : 2;
+
+    border_set_theme(g->border, binary_theme);
+    board_set_theme(g->board, theme);
+    mines_set_theme(g->mines, binary_theme);
+    clock_set_theme(g->clock, binary_theme);
+    face_set_theme(g->face, face_theme);
 }
 
 void game_mouse_down(struct Game *g, float x, float y, Uint8 button) {

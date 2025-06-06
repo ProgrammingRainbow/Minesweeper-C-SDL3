@@ -24,9 +24,9 @@ bool mines_new(struct Mines **mines, SDL_Renderer *renderer, int mine_count,
 void mines_free(struct Mines **mines);
 void mines_reset(struct Mines *m, int mine_count);
 void mines_set_scale(struct Mines *m, float scale);
+void mines_set_theme(struct Mines *m, unsigned theme);
 void mines_increment(struct Mines *m);
 void mines_decrement(struct Mines *m);
-void mines_set_theme(struct Mines *m, unsigned theme);
 void mines_draw(const struct Mines *m);
 
 #endif

@@ -104,6 +104,11 @@ void mines_set_scale(struct Mines *m, float scale) {
     m->digit_height = DIGIT_HEIGHT * m->scale;
 }
 
+void mines_set_theme(struct Mines *m, unsigned theme) {
+    m->back_theme = theme;
+    m->digit_theme = theme * 12;
+}
+
 void mines_increment(struct Mines *m) {
     m->mine_count++;
     mines_update_digits(m);
@@ -112,11 +117,6 @@ void mines_increment(struct Mines *m) {
 void mines_decrement(struct Mines *m) {
     m->mine_count--;
     mines_update_digits(m);
-}
-
-void mines_set_theme(struct Mines *m, unsigned theme) {
-    m->back_theme = theme;
-    m->digit_theme = theme * 12;
 }
 
 void mines_draw(const struct Mines *m) {
